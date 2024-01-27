@@ -1,0 +1,152 @@
+﻿@page "/admin/products/{id:long}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Http
+@inject NavigationManager NavigationManager
+@inject ProductService ProductService
+@inject SessionService SessionService
+
+@if (SessionService.CurrentUser.Roles == null || !SessionService.CurrentUser.Roles.Contains("Administrator"))
+{
+    <p>Недостаточно прав</p>
+}
+else
+{
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <h3 class="mt-4">Редактирование товара</h3>
+                <h1>@text</h1>
+                <div class="mt-4">
+                    <form @onsubmit="UpdateProduct" class="mb-4">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Имя:</label>
+                            <input type="text" id="name" @bind="editedProduct.Name" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Описание:</label>
+                            <textarea id="description" @bind="editedProduct.Description" class="form-control" required></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="price" class="form-label">Цена:</label>
+                            <input type="text" id="price" @bind="editedProduct.Price" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="previewImage" class="form-label">Превью:</label>
+                            <InputFile OnChange="HandlePreviewFileChange" class="form-control" id="previewImage" accept="image/*" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="detailImage" class="form-label">Фотография:</label>
+                            <InputFile OnChange="HandleDetailFileChange" class="form-control" id="detailImage" accept="image/*" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private Product editedProduct = new Product();
+    private IFormFile previewImageFile;
+    private IFormFile detailImageFile;
+    private string text = "";
+    [Parameter]
+    public long Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProduct();
+    }
+
+    private async Task LoadProduct()
+    {
+        editedProduct = await ProductService.GetProductByIdAsync(Id);
+    }
+
+    private async Task UpdateProduct()
+    {
+        var edited = await ProductService.UpdateProductAsync(Id, editedProduct);
+
+        if (edited)
+        {
+            Console.WriteLine($"Товар успешно изменен с ID: {Id}");
+
+            if (previewImageFile != null)
+            {
+                var previewImageUploadSuccess = await ProductService.UploadImageAsync(Id, previewImageFile, "preview");
+
+                if (!previewImageUploadSuccess)
+                {
+                    Console.WriteLine("Ошибка загрузки предварительного изображения");
+                    return;
+                }
+            }
+
+            if (detailImageFile != null)
+            {
+                var detailImageUploadSuccess = await ProductService.UploadImageAsync(Id, detailImageFile, "detail");
+
+                if (!detailImageUploadSuccess)
+                {
+                    Console.WriteLine("Ошибка загрузки детального изображения");
+                    return;
+                }
+            }
+
+            await LoadProduct();
+            text = "Успешно изменено!";
+            StateHasChanged();
+        }
+        else
+        {
+            Console.WriteLine("Ошибка изменения товара");
+        }
+    }
+
+    private void EditProduct(long id)
+    {
+        NavigationManager.NavigateTo($"/admin/products/{id}");
+    }
+
+    private async Task DeleteProduct(long id)
+    {
+        var response = await ProductService.DeleteProductAsync(id);
+
+        if (response)
+        {
+            await LoadProduct();
+        }
+        else
+        {
+            Console.WriteLine("Ошибка удаления экспоната");
+        }
+    }
+
+    private async Task HandlePreviewFileChange(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream().ReadAsync(buffer);
+            previewImageFile = new FormFile(new MemoryStream(buffer), 0, buffer.Length, file.Name, file.Name);
+        }
+    }
+
+    private async Task HandleDetailFileChange(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream().ReadAsync(buffer);
+            detailImageFile = new FormFile(new MemoryStream(buffer), 0, buffer.Length, file.Name, file.Name);
+        }
+    }
+}

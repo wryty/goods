@@ -1,0 +1,50 @@
+﻿@page "/products"
+@using Newtonsoft.Json
+@inject IHttpClientFactory ClientFactory
+@inject ProductService ProductService
+<div class="header">
+    <h1 class="text"> Список товаров</h1>
+</div>
+
+
+<div class="spinner-container" style="display: @(isLoading ? "flex" : "none")">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+
+@if (getGoodsError || Products is null)
+{
+    <p>Unable to get goods data. Please try again later.</p>
+}
+else
+{
+    <div class="product-container">
+        @foreach (var product in Products)
+        {
+            <a href="/products/@product.Id">
+                <ProductCard Source="@product" />
+            </a>
+        }
+    </div>
+}
+
+@code {
+    private IEnumerable<Product>? Products = Array.Empty<Product>();
+    private bool getGoodsError;
+    private bool shouldRender;
+
+
+    bool isLoading = true;
+
+    protected override bool ShouldRender() => shouldRender;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        Products = await ProductService.GetProductsAsync();
+        isLoading = false;
+        shouldRender = true;
+    }
+}

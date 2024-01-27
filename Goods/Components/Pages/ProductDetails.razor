@@ -1,0 +1,62 @@
+﻿@page "/products/{Id:long}"
+
+@inject CartService CartService
+@inject ProductService ProductService
+@inject SessionService SessionService
+@rendermode InteractiveServer
+@using GoodsApi.Data.Entities
+@using GoodsApi.Models
+@using Newtonsoft.Json
+
+<div class="spinner-container" style="display: @(isLoading ? "flex" : "none")">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+@if (product is null)
+{
+    <p>Ошибка. Повторите попытку.</p>
+}
+else
+{
+    <div class="header">
+        <h1 class="text">@product.Name</h1>
+    </div>
+    <div class="image-container">
+        <img class="image" src="/uploads/@product.DetailImageFileName" />
+    </div>
+    <div class="content-container">
+        <p1>@product.Description</p1>
+        <button class="btn btn-success" @onclick="()=>AddToCart(product.Id)">@text</button>
+    </div>
+}
+@code {
+    [Parameter]
+    public long Id { get; set; }
+    private Product product { get; set; }
+    private bool isLoading;
+    private string text = "Добавить в корзину";
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        product = await ProductService.GetProductByIdAsync(Id);
+        isLoading = false;
+        StateHasChanged();
+    }
+    protected async Task AddToCart(long id)
+    {
+        var request = new CartItemRequest(){ ProductId = product.Id, Quantity = 1 };
+        var result = await CartService.CreateCartAsync(request);
+        if (result == 0)
+        {
+            text = "Ошибка!";
+        }
+        else
+        {
+            text = "Успешно добавлено!";
+        }
+        StateHasChanged();
+    }
+}

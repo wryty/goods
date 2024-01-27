@@ -1,0 +1,95 @@
+﻿@page "/orders/{OrderId:long}"
+@using GoodsApi.Data.Entities
+@inject OrderService OrderService
+@inject NavigationManager NavigationManager
+@inject ProductService ProductService
+@rendermode InteractiveServer
+@using Newtonsoft.Json
+<h1>Order Details</h1>
+
+<div class="spinner-container" style="display: @(isLoading ? "flex" : "none")">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+@if (OrderItems == null)
+{
+    <p>No items found for this order.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Товар</th>
+                    <th>Количество</th>
+                    <th>Цена</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var orderItem in OrderItems)
+                {
+                    <tr>
+                        <td><a href="products/@orderItem.ProductId">@orderItem.Product.Name</a></td>
+                        <td>@orderItem.Quantity</td>
+                        <td>@orderItem.Product.Price RUB</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <button class="btn btn-danger" @onclick="()=>DeleteOrder()">Удалить заказ</button>
+}
+
+<button class="btn btn-primary" @onclick="()=>NavigateBack()">Назад к заказам</button>
+
+@code {
+    private IEnumerable<OrderItem>? OrderItems = Array.Empty<OrderItem>();
+    [Parameter]
+    public long OrderId { get; set; }
+    private bool isLoading = true;
+
+
+
+    protected override async Task OnAfterRenderAsync(bool a)
+    {
+        if (a) await LoadOrderItems();
+    }
+
+    private async Task DeleteOrder()
+    {
+        var result = await OrderService.DeleteOrderAsync(OrderId);
+
+        if (result)
+        {
+            await LoadOrderItems();
+        }
+        else
+        {
+            
+        }
+    }
+
+    private async Task LoadOrderItems()
+    {
+        
+        isLoading = true;
+        await Task.Delay(100);
+        isLoading = false;
+        var order = await OrderService.GetOrderAsync(OrderId);
+        OrderItems = await OrderService.GetOrderItemsAsync(OrderId);
+        var orderProducts = new List<Product>();
+        foreach (var item in OrderItems)
+        {
+            item.Product = await ProductService.GetProductByIdAsync(item.ProductId);
+        }
+        StateHasChanged();
+    }
+
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo("/orders"); 
+    }
+}

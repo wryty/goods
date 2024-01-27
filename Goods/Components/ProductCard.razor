@@ -1,0 +1,23 @@
+﻿@using GoodsApi.Data.Entities
+@inject NavigationManager NavigationManager
+
+    <div class="product" @onclick="NavigateToproduct" style="background-color: rgba(0 0 0, 0.5); width: 350px; height: 350px;">
+        @if (Source.PreviewImageFileName != null)
+        {
+        <img class="image" src="/uploads/@Source.PreviewImageFileName
+                    " alt="@Source.PreviewImageFileName" />
+        }
+        <h1 class="text">@Source.Name</h1>
+        <h1>@Source.Price RUB</h1>
+    </div>
+
+
+@code {
+    [Parameter]
+    public Product Source { get; set; } = null!;
+
+    private void NavigateToproduct()
+    {
+        NavigationManager.NavigateTo($"/products/{Source.Id}");
+    }
+}
